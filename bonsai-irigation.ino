@@ -21,8 +21,6 @@ Watering changed to small burst to allow better soaking.
 int   moisture  = 0;
 int   lowMoistureSetting = 225;
 int   highMoistureSetting = 700;
-const int moistureInterval = 30000;
-unsigned long previousMoistureMillis = 0; 
 
 int   waterLevelLow = 45; //only water when moisture is below this %
 int   waterLevelHigh = 70; 
@@ -30,13 +28,13 @@ int   waterLevelHigh = 70;
 unsigned long currentMillis = 0;
 
 byte buttonState = LOW; 
-int pumpOn = 0;
 const int buttonInterval = 300;
 unsigned long previousButtonMillis = 0; 
 
 byte pumpState = LOW; 
-const unsigned long pumpInterval = 60000; //1 minute - 3600000 ;//1 hour -  10800000; //3 hours
-const int pumpDuration = 1000; // 1 seconds
+bool pumping = false;
+const unsigned long pumpInterval = 60000; //1 minutes - 3600000 ;//1 hour -  10800000; //3 hours
+const int pumpDuration = 500; // 0.5 seconds
 const int soakingDuration = 4000; // 4 seconds
 unsigned long previousPumpMillis = 0;
 
@@ -62,15 +60,10 @@ void setup() {
 void loop() {
   currentMillis = millis(); 
 
-  readButton(); 
-  readMoistureInterval();
-  
+  readPumpButton();   
   updatePump_State();
-  //switchPower();
   
   writeLCD();
-  //writeLCDDebug_pump();
-  //writeLCDDebug_button();
 
   reset();
   delay(1000);
@@ -78,39 +71,27 @@ void loop() {
 
 void updatePump_State()
 {  
-  if(moisture <= wateringLevelCritical)
+  if(pumpState == LOW)
   {
-      switchPower();
-      previousPumpMillis = currentMillis;
-      
-    /*
-    //if(currentMillis - previousPumpMillis >= pumpInterval)
-    //{
-      pumpState = HIGH;
-      pumpOn=1;
-      switchPower();
-      delay(1000);
-      pumpState = LOW;
-      switchPower();
-      delay(4000); //1 sec burst every 5 seconds to give water time to soak in.
-      previousPumpMillis = currentMillis - pumpInterval;
-      previousPumpMillis += pumpInterval;
-      //previousPumpMillis += 1;
-    //}
-    */
-  }
-  else if(pumpState == LOW)
-  {
-    //writeLCD1000("PUMP STATE LOW");
-  
     if(currentMillis - previousPumpMillis >= pumpInterval)
     {
       readMoisture();
-      if(moisture <=wateringLevel)
+      if(moisture <=waterLevelLow)
       {
-        //pumpState = HIGH;
-        //pumpOn=1;
-        switchPower();
+        pumping = true;
+        waterPlant();
+      }
+      else if(pumping)
+      {
+        if(moisture <= waterLevelHigh)
+        {
+          waterPlant();
+         }
+         else
+         {
+          pumping = false;
+         }
+          
       }
       else{
         writeLCD("Moist enough!");
@@ -118,41 +99,10 @@ void updatePump_State()
       previousPumpMillis += pumpInterval;
     }
   }
-  else
-  {
-    //writeLCD1000("PUMP STATE HIGH");
-    
-    //writeLCD1000(currentMillis - previousPumpMillis);
-    if( currentMillis - previousPumpMillis >= pumpDuration)
-    {
-      pumpState = LOW;  
-      //previousPumpMillis += pumpInterval;    
-    }
-  }
-}
-
-/*
-void switchPower()
-{
-  digitalWrite(PUMP, pumpState); 
-}*/
-void switchPower()
-{
-  pumpOn=1;
-  writeLCD("Pumping...");
-  digitalWrite(PUMP, HIGH);
-  delay(pumpDuration);  
-  digitalWrite(PUMP, LOW);
-  
-  writeLCD("Soaking...");
-  delay(soakingDuration);
-  
-  currentMillis = millis(); 
 }
 
 void waterPlant()
 {
-  pumpOn = 1;
   wrtieLCD("Pumping...");
   while(moisture <= waterLevelHigh)
   {
@@ -171,7 +121,7 @@ void waterPlant()
 }
 
 
-void readButton() 
+void readPumpButton() 
 { 
   if (millis() - previousButtonMillis >= buttonInterval) 
   {
@@ -253,44 +203,6 @@ void writeLCD(String text)
   currentMillis = millis(); 
 }
 
-void writeLCDDebug_pump()
-{
-  lcd.clear();//Clean the screen
-  lcd.setCursor(0, 0);
-  if(pumpState == HIGH)
-  {
-    lcd.print("pH ");
-  }
-  else{
-    lcd.print("pL ");
-  }
-  lcd.print(currentMillis);
-  lcd.setCursor(0,1);
-  lcd.print(previousPumpMillis);
-  lcd.print(":");
-  lcd.print(pumpInterval);
-  lcd.print(":");
-  lcd.print(pumpDuration);
-}
-void writeLCDDebug_button()
-{
-  buttonState = digitalRead(BUTTON_PIN);
-  
-  lcd.clear();//Clean the screen
-  lcd.setCursor(0, 0);
-  if(buttonState == HIGH)
-  {
-    lcd.print("bH ");
-  }
-  else{
-    lcd.print("bL ");
-  }
-  lcd.print(currentMillis);
-  lcd.setCursor(0,1);
-  lcd.print(previousButtonMillis);
-  lcd.print(":");
-  lcd.print(buttonInterval);
-}
 
 void reset()
 {
