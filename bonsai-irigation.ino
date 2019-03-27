@@ -1,13 +1,13 @@
 /*
-Updated version
-Simplifies watering. Watering lets moisture drop to drier level, then water's to higher level.
-Up/Down watering may be better for the plant than constant level moisture.
-
-Button always waters when pressed.
-
-Watering changed to small burst to allow better soaking.
-
-*/
+ * Bonsai Irrigation v2
+ * 
+ * Simplifies watering. Watering lets moisture drop to drier level, then water's to higher level.
+ * Up/Down watering may be better for the plant than constant level moisture.
+ * 
+ * Button always waters when pressed.
+ * 
+ * Watering changed to small burst to allow better soaking.
+ */
 
 //for LCD
 #include <Wire.h>
@@ -71,39 +71,38 @@ void loop() {
 
 void updatePump_State()
 {  
-  if(pumpState == LOW)
+
+  if(currentMillis - previousPumpMillis >= pumpInterval)
   {
-    if(currentMillis - previousPumpMillis >= pumpInterval)
+    readMoisture();
+    if(moisture <=waterLevelLow)
     {
-      readMoisture();
-      if(moisture <=waterLevelLow)
-      {
-        pumping = true;
-        waterPlant();
-      }
-      else if(pumping)
-      {
-        if(moisture <= waterLevelHigh)
-        {
-          waterPlant();
-         }
-         else
-         {
-          pumping = false;
-         }
-          
-      }
-      else{
-        writeLCD("Moist enough!");
-      }
-      previousPumpMillis += pumpInterval;
+      pumping = true;
+      waterPlant();
     }
+    else if(pumping)
+    {
+      if(moisture <= waterLevelHigh)
+      {
+        waterPlant();
+       }
+       else
+       {
+        pumping = false;
+       }
+        
+    }
+    else{
+      writeLCD("Moist enough!");
+    }
+    previousPumpMillis += pumpInterval;
   }
+  
 }
 
 void waterPlant()
 {
-  wrtieLCD("Pumping...");
+  writeLCD("Pumping...");
   while(moisture <= waterLevelHigh)
   {
     digitalWrite(PUMP, HIGH);
@@ -114,7 +113,8 @@ void waterPlant()
     delay(soakingDuration);
     
     readMoisture();
-    writeLCD("Moisture: " + moisture + "%");
+    String text = "Moisture: " + String(moisture) + "%";
+    writeLCD("Moisture: " + String(moisture) + "%");
     delay(1500);
   }
   currentMillis = millis();
@@ -150,9 +150,6 @@ void readMoisture()
   digitalWrite(MOISTPOWER, LOW);
 }
 
-
-
-
 void writeLCD()
 {
   lcd.clear();//Clean the screen
@@ -163,34 +160,21 @@ void writeLCD()
   lcd.print("%");
 
   lcd.setCursor(0, 1);
-  
-  if(pumpState == HIGH)
+
+  unsigned long rem = ( ((previousPumpMillis + pumpInterval) - currentMillis)/1000) ;
+  lcd.print("Check in ");
+  if(rem >60)
   {
-    lcd.print("pumping: ");
-    lcd.print( (pumpDuration - (currentMillis - previousPumpMillis))/1000);
-    lcd.print(" sec");
+    rem = rem /60;
+    lcd.print(rem);
+    lcd.print(" min"); 
   }
-  else
+  else 
   {
-    unsigned long rem = ( ((previousPumpMillis + pumpInterval) - currentMillis)/1000) ;
-    lcd.print("Pump: ");
-    if(rem >60)
-    {
-      rem = rem /60;
-      lcd.print(rem);
-      lcd.print(" min"); 
-    }
-    else 
-    {
-      lcd.print(rem);
-      lcd.print(" sec");       
-    }
-    
-    //lcd.print(rem);
-//    lcd.print( ((previousPumpMillis + pumpInterval) - currentMillis)/1000);
-    //lcd.print(" sec");    
-  }
-  
+    lcd.print(rem);
+    lcd.print(" sec");       
+  }   
+   
 }
 
 void writeLCD(String text)
@@ -210,7 +194,6 @@ void reset()
   {    
     previousButtonMillis = 0; 
     previousPumpMillis = 0;
-    previousMoistureMillis = 0;
     
     currentMillis = 0; //86400000;  //1 day
   }  
