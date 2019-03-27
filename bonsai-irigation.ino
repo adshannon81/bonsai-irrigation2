@@ -1,4 +1,13 @@
+/*
+Updated version
+Simplifies watering. Watering lets moisture drop to drier level, then water's to higher level.
+Up/Down watering may be better for the plant than constant level moisture.
 
+Button always waters when pressed.
+
+Watering changed to small burst to allow better soaking.
+
+/*
 
 //for LCD
 #include <Wire.h>
@@ -6,7 +15,7 @@
 
 #define PUMP        3 
 #define MOIST       A6        //analog pin for soil moisture
-#define MOISTPOWER  4
+#define MOISTPOWER  4         //only power moisture reader when in use
 #define BUTTON_PIN  2         //digital pin for button
 
 int   moisture  = 0;
@@ -15,8 +24,8 @@ int   highMoistureSetting = 700;
 const int moistureInterval = 30000;
 unsigned long previousMoistureMillis = 0; 
 
-int   wateringLevel = 50; //only water when moisture is below this %
-int   wateringLevelCritical = 35; //if sudden drop in moisture, don't weight for pump timer.
+int   waterLevelLow = 45; //only water when moisture is below this %
+int   waterLevelHigh = 70; 
 
 unsigned long currentMillis = 0;
 
@@ -40,7 +49,6 @@ void setup() {
 
   lcd.init();
   lcd.backlight();//Power on the back light
-
  
   pinMode(PUMP, OUTPUT);
   pinMode(MOIST, INPUT);
@@ -142,46 +150,57 @@ void switchPower()
   currentMillis = millis(); 
 }
 
+void waterPlant()
+{
+  pumpOn = 1;
+  wrtieLCD("Pumping...");
+  while(moisture <= waterLevelHigh)
+  {
+    digitalWrite(PUMP, HIGH);
+    delay(pumpDuration);  
+    digitalWrite(PUMP, LOW);
+  
+    writeLCD("Soaking...");
+    delay(soakingDuration);
+    
+    readMoisture();
+    writeLCD("Moisture: " + moisture + "%");
+    delay(1500);
+  }
+  currentMillis = millis();
+}
 
-void readButton() {
-  // this only reads the button state after the button interval has elapsed
-  //  this avoids multiple flashes if the button bounces
-  // every time the button is pressed it changes buttonLed_State causing the Led to go on or off
-  // Notice that there is no need to synchronize this use of millis() with the flashing Leds
- 
+
+void readButton() 
+{ 
   if (millis() - previousButtonMillis >= buttonInterval) 
   {
     if (digitalRead(BUTTON_PIN) == HIGH) 
     {
-      //pumpState = ! pumpState; 
-      //pumpState = LOW;
-      previousPumpMillis = currentMillis - pumpInterval;
-
-     
+      waterPlant();     
       previousButtonMillis += buttonInterval;
     }
   }
 }
 
+//reads level 5 times and gets the average.
 void readMoisture()
 {
   digitalWrite(MOISTPOWER, HIGH);
-  delay(20);
-  moisture = analogRead(MOIST);
+  moisture = 0;
+  for (int i = 0; i < 5; i++) {
+    moisture = moisture + analogRead(MOIST);
+    delay(10);
+  }
+  moisture = moisture / 5;
+  
   //dry soil reading = 550, wet soil = 10; map to 0-100
   moisture = map(moisture,lowMoistureSetting,highMoistureSetting,0,100);
   
   digitalWrite(MOISTPOWER, LOW);
 }
 
-void readMoistureInterval()
-{
-  if(currentMillis - previousMoistureMillis >= moistureInterval)
-  {
-    readMoisture();
-    previousMoistureMillis += moistureInterval;
-  }
-}
+
 
 
 void writeLCD()
