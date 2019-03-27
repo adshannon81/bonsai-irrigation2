@@ -7,7 +7,7 @@ Button always waters when pressed.
 
 Watering changed to small burst to allow better soaking.
 
-/*
+*/
 
 //for LCD
 #include <Wire.h>
