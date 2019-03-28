@@ -19,10 +19,11 @@
 #define BUTTON_PIN  2         //digital pin for button
 
 int   moisture  = 0;
-int   lowMoistureSetting = 225;
-int   highMoistureSetting = 700;
+int   moistureRAW  = 0;
+int   lowMoistureSetting = 500;
+int   highMoistureSetting = 580;
 
-int   waterLevelLow = 45; //only water when moisture is below this %
+int   waterLevelLow = 10; //only water when moisture is below this %
 int   waterLevelHigh = 70; 
 
 unsigned long currentMillis = 0;
@@ -33,7 +34,7 @@ unsigned long previousButtonMillis = 0;
 
 byte pumpState = LOW; 
 bool pumping = false;
-const unsigned long pumpInterval = 60000; //1 minutes - 3600000 ;//1 hour -  10800000; //3 hours
+const unsigned long pumpInterval = 3600000 ;//1 hour -  10800000; //3 hours
 const int pumpDuration = 500; // 0.5 seconds
 const int soakingDuration = 4000; // 4 seconds
 unsigned long previousPumpMillis = 0;
@@ -62,7 +63,7 @@ void loop() {
 
   readPumpButton();   
   updatePump_State();
-  
+  //readMoisture();
   writeLCD();
 
   reset();
@@ -102,20 +103,23 @@ void updatePump_State()
 
 void waterPlant()
 {
+  
+  int pumpCount = 5;
+  
   writeLCD("Pumping...");
   while(moisture <= waterLevelHigh)
   {
     digitalWrite(PUMP, HIGH);
-    delay(pumpDuration);  
+    delay(pumpDuration * ( round(pumpCount / 5)) );  
     digitalWrite(PUMP, LOW);
   
     writeLCD("Soaking...");
     delay(soakingDuration);
     
     readMoisture();
-    String text = "Moisture: " + String(moisture) + "%";
-    writeLCD("Moisture: " + String(moisture) + "%");
+    writeLCD("Moisture: " + String(moisture) + "%");// + String(moistureRAW));
     delay(1500);
+    pumpCount++;
   }
   currentMillis = millis();
 }
@@ -143,6 +147,7 @@ void readMoisture()
     delay(10);
   }
   moisture = moisture / 5;
+  moistureRAW = moisture;
   
   //dry soil reading = 550, wet soil = 10; map to 0-100
   moisture = map(moisture,lowMoistureSetting,highMoistureSetting,0,100);
@@ -158,7 +163,7 @@ void writeLCD()
   lcd.print("Moisture: "); 
   lcd.print(moisture);
   lcd.print("%");
-
+  //lcd.print(moistureRAW);
   lcd.setCursor(0, 1);
 
   unsigned long rem = ( ((previousPumpMillis + pumpInterval) - currentMillis)/1000) ;
